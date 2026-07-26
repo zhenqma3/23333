@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel数据随机提取器 - 修复版</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            transform: rotate(30deg);
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.92;
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            line-height: 1.6;
+        }
+        
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section, .result-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .upload-section h2, .result-section h2 {
+            color: #1e3c72;
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eef2f7;
+        }
+        
+        .file-upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            background: white;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .file-upload-area:hover {
+            border-color: #1e3c72;
+            background: #f1f7ff;
+        }
+        
+        .file-upload-area i {
+            font-size: 4rem;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+            transition: color 0.3s;
+        }
+        
+        .file-upload-area:hover i {
+            color: #1e3c72;
+        }
+        
+        .file-upload-area h3 {
+            color: #475569;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .file-upload-area p {
+            color: #64748b;
+            margin-bottom: 15px;
+        }
+        
+        .file-upload-area .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .file-upload-area .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-info {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            display: none;
+        }
+        
+        .file-info.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .file-info h4 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-details {
+            display: flex;
+            justify-content: space-between;
+            color: #475569;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eef2f7;
+        }
+        
+        .file-details:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .file-details .label {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .extraction-controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+        
+        .control-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+        
+        .control-group input:focus {
+            outline: none;
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.2);
+        }
+        
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 16px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .primary-btn {
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: white;
+        }
+        
+        .secondary-btn {
+            background-color: #f1f5f9;
+            color: #1e3c72;
+            border: 1px solid #d1d9e6;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 14px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .result-count {
+            background: linear-gradient(to right, #ff9a9e, #fad0c4);
+            color: #fff;
+            padding: 7px 18px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .result-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .data-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eef2f7;
+            color: #475569;
+        }
+        
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f1f7ff;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .no-data i {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: white;
+            color: #10b981;
+            padding: 18px 28px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transform: translateX(150%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            color: #ef4444;
+        }
+        
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-actions button {
+            flex: 1;
+        }
+        
+        .success-btn {
+            background: linear-gradient(to right, #00b09b, #96c93d);
+            color: white;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 600px) {
+            header {
+                padding: 25px 15px;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .upload-section, .result-section {
+                padding: 20px;
+            }
+            
+            .btn-container, .result-actions {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 0.95rem;
+            border-top: 1px solid #eef2f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-file-excel"></i> Excel数据随机提取器</h1>
+            <p>上传Excel文件，随机抽取指定数量的数据记录，支持结果复制和导出</p>
+        </header>
+        
+        <div class="content">
+            <div class="upload-section">
+                <h2><i class="fas fa-upload"></i> 上传Excel文件</h2>
+                
+                <div class="file-upload-area" id="drop-zone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>拖放Excel文件到此处</h3>
+                    <p>或</p>
+                    <div class="btn">选择Excel文件</div>
+                    <input type="file" id="file-input" accept=".xlsx, .xls">
+                </div>
+                
+                <div class="file-info" id="file-info">
+                    <h4><i class="fas fa-file-excel"></i> 文件信息</h4>
+                    <div class="file-details">
+                        <span class="label">文件名:</span>
+                        <span id="file-name">-</span>
+                    </div>
+                    <div class="file-details">
+                        <span class="label">文件大小:</span>
+                        <span id="file-size">-</span>
+                    </div>
+                    <div class="file-details">
+                        <span class="label">工作表:</span>
+                        <span id="sheet-count">-</span>
+                    </div>
+                    <div class="file-details">
+                        <span class="label">总数据行数:</span>
+                        <span id="data-rows">-</span>
+                    </div>
+                </div>
+                
+                <div class="extraction-controls">
+                    <div class="control-group">
+                        <label for="extract-count"><i class="fas fa-list-ol"></i> 提取数据条数</label>
+                        <input type="number" id="extract-count" min="1" value="5" placeholder="输入要提取的数据条数">
+                    </div>
+                    
+                    <div class="btn-container">
+                        <button id="extract-btn" class="primary-btn">
+                            <i class="fas fa-random"></i> 随机提取
+                        </button>
+                        <button id="reset-btn" class="secondary-btn">
+                            <i class="fas fa-redo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <h2><i class="fas fa-list"></i> 提取结果</h2>
+                
+                <div class="result-header">
+                    <div class="result-count">
+                        <i class="fas fa-database"></i> 提取 <span id="result-count">0</span> 条数据
+                    </div>
+                </div>
+                
+                <div class="result-container" id="result-container">
+                    <div class="no-data">
+                        <i class="fas fa-database"></i>
+                        <h3>暂无提取数据</h3>
+                        <p>上传Excel文件并点击"随机提取"按钮</p>
+                    </div>
+                </div>
+                
+                <div class="result-actions">
+                    <button id="copy-btn" class="success-btn">
+                        <i class="fas fa-copy"></i> 复制数据
+                    </button>
+                    <button id="export-btn" class="primary-btn">
+                        <i class="fas fa-download"></i> 导出CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Excel数据随机提取器 &copy; 2023 | 基于SheetJS实现Excel解析</p>
+        </footer>
+    </div>
+    
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span>数据已复制到剪贴板！</span>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const dropZone = document.getElementById('drop-zone');
+            const fileInfo = document.getElementById('file-info');
+            const extractCount = document.getElementById('extract-count');
+            const extractBtn = document.getElementById('extract-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const resultContainer = document.getElementById('result-container');
+            const resultCount = document.getElementById('result-count');
+            const notification = document.getElementById('notification');
+            
+            // 文件信息元素
+            const fileName = document.getElementById('file-name');
+            const fileSize = document.getElementById('file-size');
+            const sheetCount = document.getElementById('sheet-count');
+            const dataRows = document.getElementById('data-rows');
+            
+            // 存储上传的Excel数据
+            let excelData = [];
+            let extractedData = [];
+            let headers = [];
+            
+            // 点击上传区域触发文件选择
+            dropZone.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // 拖放功能
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.style.borderColor = '#1e3c72';
+                dropZone.style.background = '#f1f7ff';
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.style.borderColor = '#cbd5e1';
+                dropZone.style.background = 'white';
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.style.borderColor = '#cbd5e1';
+                dropZone.style.background = 'white';
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 文件选择变化
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length) {
+                    handleFile(fileInput.files[0]);
+                }
+            });
+            
+            // 处理Excel文件
+            function handleFile(file) {
+                if (!file) return;
+                
+                // 检查文件类型
+                const validTypes = [
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-excel.sheet.macroEnabled.12'
+                ];
+                
+                if (!validTypes.some(type => file.type.includes(type)) && 
+                    !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                    showNotification('请上传有效的Excel文件!', 'error');
+                    return;
+                }
+                
+                // 显示文件信息
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.classList.add('active');
+                
+                // 读取Excel文件
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        
+                        // 转换为JSON
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        
+                        if (jsonData.length < 2) {
+                            showNotification('Excel文件中没有足够的数据!', 'error');
+                            return;
+                        }
+                        
+                        // 保存数据
+                        headers = jsonData[0];
+                        excelData = jsonData.slice(1);
+                        
+                        // 更新文件信息
+                        sheetCount.textContent = workbook.SheetNames.length;
+                        dataRows.textContent = excelData.length;
+                        
+                        showNotification('Excel文件加载成功!');
+                    } catch (error) {
+                        console.error('Error parsing Excel:', error);
+                        showNotification('解析Excel文件时出错!', 'error');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    showNotification('读取文件时出错!', 'error');
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // 随机提取数据
+            extractBtn.addEventListener('click', function() {
+                if (excelData.length === 0) {
+                    showNotification('请先上传Excel文件!', 'error');
+                    return;
+                }
+                
+                const count = parseInt(extractCount.value);
+                
+                if (isNaN(count) || count <= 0) {
+                    showNotification('请输入有效的提取数量!', 'error');
+                    return;
+                }
+                
+                if (count > excelData.length) {
+                    showNotification(`提取数量不能超过总数据行数 (${excelData.length})!`, 'error');
+                    return;
+                }
+                
+                // 随机抽取数据（不重复）
+                extractedData = getRandomItems(excelData, count);
+                
+                // 显示结果
+                displayResults(extractedData);
+                
+                // 更新结果计数
+                resultCount.textContent = extractedData.length;
+                
+                showNotification(`成功随机提取 ${count} 条数据!`);
+            });
+            
+            // 重置按钮
+            resetBtn.addEventListener('click', function() {
+                fileInput.value = '';
+                fileInfo.classList.remove('active');
+                excelData = [];
+                extractedData = [];
+                headers = [];
+                
+                resultContainer.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-database"></i>
+                        <h3>暂无提取数据</h3>
+                        <p>上传Excel文件并点击"随机提取"按钮</p>
+                    </div>
+                `;
+                
+                resultCount.textContent = '0';
+                
+                showNotification('已重置提取器!');
+            });
+            
+            // 复制数据
+            copyBtn.addEventListener('click', function() {
+                if (extractedData.length === 0) {
+                    showNotification('没有可复制的数据!', 'error');
+                    return;
+                }
+                
+                // 构建CSV格式的数据
+                let csvContent = headers.join(',') + '\n';
+                extractedData.forEach(row => {
+                    // 处理包含逗号的数据，用引号包裹
+                    const formattedRow = row.map(cell => {
+                        if (typeof cell === 'string' && cell.includes(',')) {
+                            return `"${cell}"`;
+                        }
+                        return cell;
+                    });
+                    csvContent += formattedRow.join(',') + '\n';
+                });
+                
+                // 复制到剪贴板
+                copyToClipboard(csvContent);
+                showNotification('数据已复制到剪贴板!');
+            });
+            
+            // 导出CSV
+            exportBtn.addEventListener('click', function() {
+                if (extractedData.length === 0) {
+                    showNotification('没有可导出的数据!', 'error');
+                    return;
+                }
+                
+                // 构建CSV格式的数据
+                let csvContent = headers.join(',') + '\n';
+                extractedData.forEach(row => {
+                    // 处理包含逗号的数据，用引号包裹
+                    const formattedRow = row.map(cell => {
+                        if (typeof cell === 'string' && cell.includes(',')) {
+                            return `"${cell}"`;
+                        }
+                        return cell;
+                    });
+                    csvContent += formattedRow.join(',') + '\n';
+                });
+                
+                // 创建下载链接
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', '提取数据.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showNotification('数据已导出为CSV文件!');
+            });
+            
+            // 显示结果
+            function displayResults(data) {
+                if (data.length === 0) {
+                    resultContainer.innerHTML = `
+                        <div class="no-data">
+                            <i class="fas fa-database"></i>
+                            <h3>暂无提取数据</h3>
+                            <p>上传Excel文件并点击"随机提取"按钮</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let tableHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                `;
+                
+                // 添加表头
+                headers.forEach(header => {
+                    tableHTML += `<th>${header}</th>`;
+                });
+                
+                tableHTML += `
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                // 添加数据行
+                data.forEach(row => {
+                    tableHTML += `<tr>`;
+                    row.forEach(cell => {
+                        tableHTML += `<td>${cell}</td>`;
+                    });
+                    tableHTML += `</tr>`;
+                });
+                
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+                
+                resultContainer.innerHTML = tableHTML;
+            }
+            
+            // 随机获取数组中的元素（不重复）- 修复了提取数量问题
+            function getRandomItems(array, count) {
+                // 创建数组副本
+                const shuffled = [...array];
+                
+                // Fisher-Yates 洗牌算法
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                
+                // 返回指定数量的元素
+                return shuffled.slice(0, count);
+            }
+            
+            // 复制到剪贴板 - 修复了复制功能
+            function copyToClipboard(text) {
+                // 创建临时文本区域元素
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.top = 0;
+                textArea.style.left = 0;
+                textArea.style.width = '2em';
+                textArea.style.height = '2em';
+                textArea.style.padding = 0;
+                textArea.style.border = 'none';
+                textArea.style.outline = 'none';
+                textArea.style.boxShadow = 'none';
+                textArea.style.background = 'transparent';
+                
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showNotification('数据已复制到剪贴板!');
+                    } else {
+                        showNotification('复制失败，请重试', 'error');
+                    }
+                } catch (err) {
+                    showNotification('复制失败，请重试', 'error');
+                    console.error('复制失败:', err);
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            // 显示通知
+            function showNotification(message, type = 'success') {
+                const icon = type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
+                notification.innerHTML = `<i class="${icon}"></i> <span>${message}</span>`;
+                notification.className = `notification show ${type}`;
+                
+                setTimeout(() => {
+                    notification.className = 'notification';
+                }, 3000);
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        });
+    </script>
+</body>
+</html>
